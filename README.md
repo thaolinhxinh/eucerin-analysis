@@ -1,4 +1,4 @@
-# EUCERIN — Phương án B: Google Colab → Vercel → n8n → Telegram / Power BI
+# EUCERIN - n8n
 
 Bộ triển khai dựa trên pipeline A+C và mô hình Random Forest thực tế của Chương 6. **Không** sử dụng số liệu mô phỏng để thay thế kết quả Eucerin.
 
