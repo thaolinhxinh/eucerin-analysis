@@ -1,0 +1,35 @@
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+.secrets/
+secrets/
+credentials/
+token.json
+client_secret*.json
+*credentials*.json
+*service-account*.json
+
+# Runtime state, generated data, and logs
+storage/
+*.sqlite*
+*.db*
+*.log
+logs/
+sample_outputs/
+reference/historical_eucerin_confirmed.csv
+
+# Python and local tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+.idea/
+.vscode/
+.superpowers/
+.vercel/

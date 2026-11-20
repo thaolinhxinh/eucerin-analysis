@@ -1,0 +1,7 @@
+{
+  "mode": "Colab train; Render inference; n8n Drive/Telegram",
+  "model_sha256": "49a4682850458ea832a33a146bf025d351e6cb2674ec2ebce0dc361d0adb0d12",
+  "workflow_node_count": 20,
+  "render_plan": "starter + persistent_disk",
+  "api_source": "EUCERIN_Automation_Complete prior real-data-tested"
+}

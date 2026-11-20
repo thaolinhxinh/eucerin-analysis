@@ -1,0 +1,29 @@
+# MAIN DEPLOYMENT: persistent run ledger on a paid Render Web Service.
+# Required for safe replays across deploys/restarts.
+services:
+  - type: web
+    name: eucerin-ml-api
+    runtime: docker
+    region: singapore
+    plan: starter
+    branch: main
+    numInstances: 1
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    disk:
+      name: eucerin-run-ledger
+      mountPath: /app/storage
+      sizeGB: 1
+    envVars:
+      - key: APP_MODE
+        value: production
+      - key: MODEL_DIR
+        value: /app/models
+      - key: STORAGE_DIR
+        value: /app/storage
+      - key: ML_API_KEY
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: '1'

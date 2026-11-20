@@ -1,0 +1,79 @@
+{
+  "name": "EUCERIN | Error Handler → Telegram",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "614c3b87-898b-56e4-a539-2da6098e66c5",
+      "name": "E1 | Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const d=$input.first().json || {};\nconst wf=String(d.workflow?.name||'Eucerin Automation').slice(0,100).replace(/[<>]/g,'');\nconst node=String(d.execution?.lastNodeExecuted||'unknown').slice(0,90).replace(/[<>]/g,'');\nconst execid=String(d.execution?.id||'n/a').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,60);\n// No stack traces, credentials, file bodies or unsanitized source data forwarded.\nreturn [{json:{text:'⚠️ EUCERIN n8n: Workflow failed\\nWorkflow: '+wf+'\\nNode: '+node+'\\nExecution ID: '+execid+'\\nKiểm tra tab Executions và trạng thái chạy trên ML API.'}}];"
+      },
+      "id": "04c3b5e0-d0fc-559d-aea4-abced0c2b5a0",
+      "name": "E2 | Sanitize error message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "PASTE_TELEGRAM_CHAT_ID",
+        "text": "={{$json.text}}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "495d071b-c0ce-5c12-963d-4f42034e00aa",
+      "name": "E3 | Telegram: Error alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        70,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "E1 | Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "E2 | Sanitize error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E2 | Sanitize error message": {
+      "main": [
+        [
+          {
+            "node": "E3 | Telegram: Error alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "active": false,
+  "pinData": {}
+}

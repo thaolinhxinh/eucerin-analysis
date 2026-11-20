@@ -1,0 +1,20 @@
+# OPTIONAL SHORT DEMO: copy this to render.yaml before pushing only if you accept losing run history.
+# UNSAFE for scheduled production because SQLite/file outputs reset on restart.
+services:
+  - type: web
+    name: eucerin-ml-api-demo
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: APP_MODE
+        value: research
+      - key: MODEL_DIR
+        value: /app/models
+      - key: STORAGE_DIR
+        value: /app/storage
+      - key: ML_API_KEY
+        sync: false

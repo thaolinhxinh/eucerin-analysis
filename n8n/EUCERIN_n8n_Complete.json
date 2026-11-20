@@ -1,0 +1,668 @@
+{
+  "name": "EUCERIN | End-to-End Drive → ML A+C → Drive → Telegram",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0a8be808-85f1-56aa-82f9-1555bc3b385c",
+      "name": "01A | Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1700,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "4e4ad5ff-4f35-5835-869e-f021a4cbf99f",
+      "name": "01B | Daily 09:00 ICT",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "get",
+        "fileId": {
+          "__rl": true,
+          "value": "PASTE_SOURCE_FILE_ID",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "55253f24-5a55-585b-883f-3ec1fdfe342d",
+      "name": "02 | Drive: Get source metadata",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1460,
+        -100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-HTTPS-ML-API.example/check-source",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{JSON.stringify({source_id: $json.id, source_revision: (() => {const r=$json.md5Checksum || $json.modifiedTime || $json.version; if(!$json.id || !r) throw new Error(\"Drive metadata must include file ID and md5Checksum/modifiedTime/version\"); return String(r);})()})}}"
+      },
+      "id": "f03829a9-4c6d-5376-9a10-9d4376447494",
+      "name": "03 | API: Check source revision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1200,
+        -100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "4bd41746-fb93-4e75-99e9-ab2ba765c7c0",
+              "leftValue": "={{$json.changed}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "6df183f6-3fc3-5b14-9384-ac45f03c643c",
+      "name": "04 | Source changed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -970,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "PASTE_SOURCE_FILE_ID",
+          "mode": "id"
+        },
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "id": "6454c0eb-c972-57a0-a289-241b86f58551",
+      "name": "05 | Drive: Download CSV",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -750,
+        -200
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-HTTPS-ML-API.example/predict-file",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "source_id",
+              "value": "={{$('02 | Drive: Get source metadata').first().json.id}}"
+            },
+            {
+              "name": "source_revision",
+              "value": "={{$('02 | Drive: Get source metadata').first().json.md5Checksum || $('02 | Drive: Get source metadata').first().json.modifiedTime || $('02 | Drive: Get source metadata').first().json.version || ''}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        }
+      },
+      "id": "fe8e6559-c654-56cf-9e38-7031877e6ebb",
+      "name": "06 | Python: Real ML A+C",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -520,
+        -200
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "26d09951-3811-41c5-8158-a391d9de828a",
+              "leftValue": "={{$json.changed}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "a5571882-7a0c-565c-b28f-c53d615195c8",
+      "name": "07 | New ML result?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -310,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "6aca77b5-7624-46b2-a0d2-cb3d6da8b93e",
+              "leftValue": "={{Array.isArray($json.files_pending) && $json.files_pending.length > 0}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "6ecd0b0e-b647-57b6-83b9-90b4c2537971",
+      "name": "08 | Files still need upload?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -100,
+        -290
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const x=$input.first().json;\nif(!x || !x.run_id || !Array.isArray(x.files_pending)) throw new Error('No pending artifact list');\nconst allowed=['FactOccurrenceForecast_PowerBI.csv','DimSKU_Behavior.csv','DimDate_Extended_For_Forecast.csv','Model_Validation_Metrics.csv','Model_Holdout_Metrics.csv','Model_Run_History.csv','Monitoring_Daily_PowerBI.csv','SKU_Monitoring_Alerts.csv'];\nfor(const f of x.files_pending){if(!allowed.includes(f)) throw new Error('Unexpected artifact '+f);}\nreturn x.files_pending.map(f=>({json:{run_id:x.run_id,file_name:f,drive_name:x.run_id+'__'+f},pairedItem:{item:0}}));"
+      },
+      "id": "098ebdcb-a395-5aba-9b3e-2657799ec71c",
+      "name": "09 | List pending CSV exports",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        -430
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{'https://YOUR-HTTPS-ML-API.example/results/' + encodeURIComponent($json.run_id) + '/' + encodeURIComponent($json.file_name)}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "2c47f33b-d88d-5b55-8f51-4dfbb4b02168",
+      "name": "10 | API: Download each CSV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        350,
+        -430
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "inputDataFieldName": "data",
+        "name": "={{$('09 | List pending CSV exports').item.json.drive_name}}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "PASTE_OUTPUT_FOLDER_ID",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "14d64ebe-b0d9-5e0f-94b1-5a08cfcafe66",
+      "name": "11 | Drive: Upload CSV files",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        590,
+        -430
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://YOUR-HTTPS-ML-API.example/runs/' + encodeURIComponent($('09 | List pending CSV exports').item.json.run_id) + '/ack-file'}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{JSON.stringify({file_name: $('09 | List pending CSV exports').item.json.file_name, drive_file_id: $json.id})}}"
+      },
+      "id": "bd745750-6111-5559-83bb-e2f0837cf4b4",
+      "name": "12 | API: Ack each Drive upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        830,
+        -430
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const all=$input.all().map(x=>x.json);\nif(!all.length || all.some(x=>x.acknowledged!==true)) throw new Error('CSV upload acknowledgement failed');\nconst id=all[0].run_id;\nif(all.some(x=>x.run_id!==id)) throw new Error('Mixed run IDs');\nreturn [{json:{run_id:id,upload_acknowledgements:all.length}}];"
+      },
+      "id": "59f34604-faeb-5166-860c-fcbf16d86405",
+      "name": "13 | Check all upload responses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        -430
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://YOUR-HTTPS-ML-API.example/runs/' + encodeURIComponent($('06 | Python: Real ML A+C').first().json.run_id) + '/reserve-notification'}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "b4155e34-90bf-58c2-a556-d50619175680",
+      "name": "14 | API: Reserve Telegram notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        -210
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2500
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "483fe6a8-9e50-4792-9c51-2246e1fb1b93",
+              "leftValue": "={{$json.send}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "d45cd3a6-2605-5c30-bc19-1dfd5ab82efe",
+      "name": "15 | Send Telegram once?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1510,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "PASTE_TELEGRAM_CHAT_ID",
+        "text": "={{$json.telegram_text}}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "452eea41-3936-5157-b6d0-b5e3eadad4c0",
+      "name": "16 | Telegram: Send summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1750,
+        -310
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://YOUR-HTTPS-ML-API.example/runs/' + encodeURIComponent($('14 | API: Reserve Telegram notification').first().json.run_id) + '/complete'}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{JSON.stringify({telegram_message_id: String($json.message_id)})}}"
+      },
+      "id": "0818aadd-381c-55ef-89c5-a3279e9ef275",
+      "name": "17 | API: Mark delivered",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        -310
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2500
+    }
+  ],
+  "connections": {
+    "01A | Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "02 | Drive: Get source metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01B | Daily 09:00 ICT": {
+      "main": [
+        [
+          {
+            "node": "02 | Drive: Get source metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 | Drive: Get source metadata": {
+      "main": [
+        [
+          {
+            "node": "03 | API: Check source revision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 | API: Check source revision": {
+      "main": [
+        [
+          {
+            "node": "04 | Source changed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 | Source changed?": {
+      "main": [
+        [
+          {
+            "node": "05 | Drive: Download CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 | Drive: Download CSV": {
+      "main": [
+        [
+          {
+            "node": "06 | Python: Real ML A+C",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Python: Real ML A+C": {
+      "main": [
+        [
+          {
+            "node": "07 | New ML result?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 | New ML result?": {
+      "main": [
+        [
+          {
+            "node": "08 | Files still need upload?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Files still need upload?": {
+      "main": [
+        [
+          {
+            "node": "09 | List pending CSV exports",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "14 | API: Reserve Telegram notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 | List pending CSV exports": {
+      "main": [
+        [
+          {
+            "node": "10 | API: Download each CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 | API: Download each CSV": {
+      "main": [
+        [
+          {
+            "node": "11 | Drive: Upload CSV files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11 | Drive: Upload CSV files": {
+      "main": [
+        [
+          {
+            "node": "12 | API: Ack each Drive upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 | API: Ack each Drive upload": {
+      "main": [
+        [
+          {
+            "node": "13 | Check all upload responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13 | Check all upload responses": {
+      "main": [
+        [
+          {
+            "node": "14 | API: Reserve Telegram notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "14 | API: Reserve Telegram notification": {
+      "main": [
+        [
+          {
+            "node": "15 | Send Telegram once?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "15 | Send Telegram once?": {
+      "main": [
+        [
+          {
+            "node": "16 | Telegram: Send summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16 | Telegram: Send summary": {
+      "main": [
+        [
+          {
+            "node": "17 | API: Mark delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

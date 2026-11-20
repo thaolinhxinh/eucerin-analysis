@@ -1,0 +1,1 @@
+PASS: Mutating all observed values after 2026-10-05 does not change 7-day forecast features at the origin.
